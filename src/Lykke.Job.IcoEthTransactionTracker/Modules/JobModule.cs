@@ -1,15 +1,15 @@
 ﻿using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Common.Log;
+using Lykke.Ico.Core.Queues;
+using Lykke.Ico.Core.Queues.Transactions;
+using Lykke.Ico.Core.Repositories.CampaignInfo;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Lykke.Job.IcoEthTransactionTracker.Core.Settings.JobSettings;
+using Lykke.Job.IcoEthTransactionTracker.PeriodicalHandlers;
 using Lykke.Job.IcoEthTransactionTracker.Services;
 using Lykke.SettingsReader;
-using Lykke.Job.IcoEthTransactionTracker.PeriodicalHandlers;
 using Microsoft.Extensions.DependencyInjection;
-using Lykke.Ico.Core.Repositories.ProcessedBlock;
-using Lykke.Ico.Core.Queues.Transactions;
-using Lykke.Ico.Core.Queues;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Modules
 {
@@ -57,8 +57,8 @@ namespace Lykke.Job.IcoEthTransactionTracker.Modules
             builder.RegisterType<ShutdownManager>()
                 .As<IShutdownManager>();
 
-            builder.RegisterType<ProcessedBlockRepository>()
-                .As<IProcessedBlockRepository>()
+            builder.RegisterType<CampaignInfoRepository>()
+                .As<ICampaignInfoRepository>()
                 .WithParameter(TypedParameter.From(_dbSettingsManager.Nested(x => x.DataConnString)));
 
             builder.RegisterType<QueuePublisher<BlockchainTransactionMessage>>()

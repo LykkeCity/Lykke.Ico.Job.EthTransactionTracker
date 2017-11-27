@@ -6,8 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Lykke.Common" Version="3.0.0" />
-    <PackageReference Include="Lykke.Ico.Core" Version="1.0.47" />
+    <PackageReference Include="Lykke.Common" Version="3.0.2" />
+    <PackageReference Include="Lykke.Ico.Core" Version="1.0.53" />
+    <PackageReference Include="Nethereum.Web3" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>
