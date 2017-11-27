@@ -26,6 +26,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         private readonly ICampaignInfoRepository _campaignInfoRepository;
         private readonly IQueuePublisher<BlockchainTransactionMessage> _transactionQueue;
         private readonly Web3 _web3;
+        private string _network;
 
         public TransactionTrackingService(
             ILog log,
@@ -42,8 +43,13 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
         public async Task Execute()
         {
+            if (string.IsNullOrWhiteSpace(_network))
+            {
+                _network = await GetNetwork();
+            }
+
             ulong lastProcessedHeight = 0;
-            var lastConfirmed = await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync();
+            ulong lastConfirmedHeight = await GetLastConfirmedHeightAsync();
 
             if (!ulong.TryParse(await _campaignInfoRepository.GetValueAsync(CampaignInfoType.LastProcessedBlockEth), out lastProcessedHeight) || 
                 lastProcessedHeight == 0)
@@ -51,26 +57,26 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 lastProcessedHeight = _trackingSettings.StartHeight;
             }
 
-            if (lastProcessedHeight >= lastConfirmed.Value)
+            if (lastProcessedHeight >= lastConfirmedHeight)
             {
                 // all processed or start height is greater than current height
                 return;
             }
 
             var from = lastProcessedHeight + 1;
-            var to = lastConfirmed.Value;
+            var to = lastConfirmedHeight;
             var blockCount = to - lastProcessedHeight;
             var blockRange = blockCount > 1 ? $"[{from} - {to}]" : $"[{to}]";
             var txCount = 0;
 
-            await _log.WriteInfoAsync(_component, _process, _trackingSettings.EthereumNetwork, $"Processing block(s) {blockRange} started");
+            await _log.WriteInfoAsync(_component, _process, _network, $"Processing block(s) {blockRange} started");
 
             for (var h = from; h <= to; h++)
             {
                 txCount += await ProcessBlock(h);
             }
 
-            await _log.WriteInfoAsync(_component, _process, _trackingSettings.EthereumNetwork, $"{blockCount} block(s) processed; {txCount} payment transactions queued");
+            await _log.WriteInfoAsync(_component, _process, _network, $"{blockCount} block(s) processed; {txCount} payment transactions queued");
         }
 
         private async Task<int> ProcessBlock(ulong height)
@@ -100,6 +106,23 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEth, height.ToString());
 
             return paymentTx.Count;
+        }
+
+        private async Task<ulong> GetLastConfirmedHeightAsync()
+        {
+            return (ulong)(await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync()).Value - _trackingSettings.ConfirmationLimit;
+        }
+
+        private async Task<string> GetNetwork()
+        {
+            var networkId = await _web3.Net.Version.SendRequestAsync();
+
+            return
+                networkId == "1" ? "Mainnet" :
+                networkId == "2" ? "Morden Testnet" :
+                networkId == "3" ? "Ropsten Testnet" :
+                networkId == "42" ? "Kovan Test" :
+                networkId;
         }
     }
 }
