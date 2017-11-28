@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Ico.Core;
@@ -96,30 +97,23 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             // amount of payment transactions
             var count = 0;
 
-            foreach (var tx in blockTransactions)
+            foreach (var t in blockTransactions)
             {
-                var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value);
+                var amount = UnitConversion.Convert.FromWei(t.Action?.Value?.Value ?? BigInteger.Zero);
 
                 if (amount > 0M)
                 {
-                    try
+                    await _transactionQueue.SendAsync(new BlockchainTransactionMessage
                     {
-                        await _transactionQueue.SendAsync(new BlockchainTransactionMessage
-                        {
-                            BlockId = tx.BlockHash,
-                            BlockTimestamp = blockTimestamp,
-                            TransactionId = tx.TransactionHash,
-                            DestinationAddress = tx.Action.To,
-                            CurrencyType = CurrencyType.Ether,
-                            Amount = amount
-                        });
+                        BlockId = t.BlockHash,
+                        BlockTimestamp = blockTimestamp,
+                        TransactionId = t.TransactionHash,
+                        DestinationAddress = t.Action.To,
+                        CurrencyType = CurrencyType.Ether,
+                        Amount = amount
+                    });
 
-                        count++;
-                    }
-                    catch (Exception ex)
-                    {
-                        throw;
-                    }
+                    count++;
                 }
             }
 
