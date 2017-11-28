@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 using Common.Log;
@@ -23,6 +24,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         private readonly ICampaignInfoRepository _campaignInfoRepository;
         private readonly IQueuePublisher<BlockchainTransactionMessage> _transactionQueue;
         private readonly Web3 _web3;
+        private readonly AddressUtil _addressUtil = new AddressUtil();
         private string _network;
 
         public TransactionTrackingService(
@@ -97,24 +99,22 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             // amount of payment transactions
             var count = 0;
 
-            foreach (var tx in blockTransactions)
+            foreach (var tx in blockTransactions.Where(t => !string.IsNullOrWhiteSpace(t.Action?.To) && t.Action?.Value?.Value > 0))
             {
-                var amount = UnitConversion.Convert.FromWei(tx.Action?.Value?.Value ?? BigInteger.Zero);
+                var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value);
+                var destinationAddress = _addressUtil.ConvertToChecksumAddress(tx.Action.To);
 
-                if (amount > 0M && !string.IsNullOrEmpty(tx.Action?.To))
+                await _transactionQueue.SendAsync(new BlockchainTransactionMessage
                 {
-                    await _transactionQueue.SendAsync(new BlockchainTransactionMessage
-                    {
-                        BlockId = tx.BlockHash,
-                        BlockTimestamp = blockTimestamp,
-                        TransactionId = tx.TransactionHash,
-                        DestinationAddress = tx.Action.To,
-                        CurrencyType = CurrencyType.Ether,
-                        Amount = amount
-                    });
+                    BlockId = tx.BlockHash,
+                    BlockTimestamp = blockTimestamp,
+                    TransactionId = tx.TransactionHash,
+                    DestinationAddress = destinationAddress,
+                    CurrencyType = CurrencyType.Ether,
+                    Amount = amount
+                });
 
-                    count++;
-                }
+                count++;
             }
 
             await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEth, height.ToString());
