@@ -1,19 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Ico.Core;
 using Lykke.Ico.Core.Queues;
 using Lykke.Ico.Core.Queues.Transactions;
+using Lykke.Ico.Core.Repositories.CampaignInfo;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Lykke.Job.IcoEthTransactionTracker.Core.Settings.JobSettings;
-using Nethereum.Web3;
-using Nethereum.RPC.Eth.DTOs;
-using Lykke.Ico.Core.Repositories.CampaignInfo;
+using Nethereum.Hex.HexTypes;
 using Nethereum.Util;
+using Nethereum.Web3;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Services
 {
@@ -81,48 +77,89 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
         private async Task<int> ProcessBlock(ulong height)
         {
-            var block = await _web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new BlockParameter(height));
-            var paymentTx = block.Transactions
-                .Where(t => !string.IsNullOrWhiteSpace(t.To))
-                .Where(t => t.Value != null && t.Value.Value > 0)
-                .ToList();
-           
-            foreach (var tx in paymentTx)
-            {
-                var blockTimestamp = DateTimeOffset.FromUnixTimeSeconds((long)block.Timestamp.Value);
-                var amount = UnitConversion.Convert.FromWei(tx.Value.Value);
+            var hexHeight = new HexBigInteger(height);
 
-                await _transactionQueue.SendAsync(new BlockchainTransactionMessage
+            // we need to get header to extract timestamp of block
+            var block = await _web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(hexHeight);
+            var blockTimestamp = DateTimeOffset.FromUnixTimeSeconds((long)block.Timestamp.Value);
+
+            if (block.TransactionHashes.Length == 0)
+            {
+                // empty block
+                return 0;
+            }
+
+            // we need to use traces instead of regular data to get all tx info including inner transactions
+            var traceParams = new { fromBlock = hexHeight, toBlock = hexHeight };
+            var blockTransactions = await _web3.Client.SendRequestAsync<TransactionTrace[]>("trace_filter", null, traceParams);
+            
+            // amount of payment transactions
+            var count = 0;
+
+            foreach (var tx in blockTransactions)
+            {
+                var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value);
+
+                if (amount > 0M)
                 {
-                    BlockId = tx.BlockHash,
-                    BlockTimestamp = blockTimestamp,
-                    TransactionId = tx.TransactionHash,
-                    DestinationAddress = tx.To,
-                    CurrencyType = CurrencyType.Ether,
-                    Amount = amount
-                });
+                    try
+                    {
+                        await _transactionQueue.SendAsync(new BlockchainTransactionMessage
+                        {
+                            BlockId = tx.BlockHash,
+                            BlockTimestamp = blockTimestamp,
+                            TransactionId = tx.TransactionHash,
+                            DestinationAddress = tx.Action.To,
+                            CurrencyType = CurrencyType.Ether,
+                            Amount = amount
+                        });
+
+                        count++;
+                    }
+                    catch (Exception ex)
+                    {
+                        throw;
+                    }
+                }
             }
 
             await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEth, height.ToString());
 
-            return paymentTx.Count;
+            return count;
         }
 
         private async Task<ulong> GetLastConfirmedHeightAsync()
         {
-            return (ulong)(await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync()).Value - _trackingSettings.ConfirmationLimit;
+            var lastHeightHex = await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync();
+            var lastHeight = (ulong)lastHeightHex.Value;
+
+            return lastHeight - _trackingSettings.ConfirmationLimit;
         }
 
         private async Task<string> GetNetwork()
         {
-            var networkId = await _web3.Net.Version.SendRequestAsync();
-
-            return
-                networkId == "1" ? "Mainnet" :
-                networkId == "2" ? "Morden Testnet" :
-                networkId == "3" ? "Ropsten Testnet" :
-                networkId == "42" ? "Kovan Test" :
-                networkId;
+            return await _web3.Client.SendRequestAsync<string>("parity_chain");
         }
+
+        private async Task<TransactionTrace[]> TraceTransaction(string transactionHash)
+        {
+            return await _web3.Client.SendRequestAsync<TransactionTrace[]>("trace_transaction", null, transactionHash);
+        }
+
+        private class TransactionTrace
+        {
+            public TransactionTraceAction Action { get; set; }
+            public string BlockHash { get; set; }
+            public string TransactionHash { get; set; }
+            public string Type { get; set; }
+        }
+
+        private class TransactionTraceAction
+        {
+            public string From { get; set; }
+            public string To { get; set; }
+            public HexBigInteger Value { get; set; }
+        }
+
     }
 }
