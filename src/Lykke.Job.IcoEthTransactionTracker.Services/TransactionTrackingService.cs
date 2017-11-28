@@ -97,18 +97,18 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             // amount of payment transactions
             var count = 0;
 
-            foreach (var t in blockTransactions)
+            foreach (var tx in blockTransactions)
             {
-                var amount = UnitConversion.Convert.FromWei(t.Action?.Value?.Value ?? BigInteger.Zero);
+                var amount = UnitConversion.Convert.FromWei(tx.Action?.Value?.Value ?? BigInteger.Zero);
 
-                if (amount > 0M)
+                if (amount > 0M && !string.IsNullOrEmpty(tx.Action?.To))
                 {
                     await _transactionQueue.SendAsync(new BlockchainTransactionMessage
                     {
-                        BlockId = t.BlockHash,
+                        BlockId = tx.BlockHash,
                         BlockTimestamp = blockTimestamp,
-                        TransactionId = t.TransactionHash,
-                        DestinationAddress = t.Action.To,
+                        TransactionId = tx.TransactionHash,
+                        DestinationAddress = tx.Action.To,
                         CurrencyType = CurrencyType.Ether,
                         Amount = amount
                     });
