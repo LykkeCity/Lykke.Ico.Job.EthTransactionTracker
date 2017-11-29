@@ -23,32 +23,37 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         private readonly TrackingSettings _trackingSettings;
         private readonly ICampaignInfoRepository _campaignInfoRepository;
         private readonly IQueuePublisher<BlockchainTransactionMessage> _transactionQueue;
-        private readonly Web3 _web3;
+        private readonly IBlockchainReader _blockchainReader;
         private readonly AddressUtil _addressUtil = new AddressUtil();
         private string _network;
+        private string _link;
 
         public TransactionTrackingService(
             ILog log,
             TrackingSettings trackingSettings,
             ICampaignInfoRepository campaignInfoRepository,
-            IQueuePublisher<BlockchainTransactionMessage> transactionQueue)
+            IQueuePublisher<BlockchainTransactionMessage> transactionQueue,
+            IBlockchainReader blockchainReader)
         {
             _log = log;
             _trackingSettings = trackingSettings;
             _campaignInfoRepository = campaignInfoRepository;
             _transactionQueue = transactionQueue;
-            _web3 = new Web3(trackingSettings.EthereumUrl);
+            _blockchainReader = blockchainReader;
         }
 
         public async Task Execute()
         {
             if (string.IsNullOrWhiteSpace(_network))
             {
-                _network = await GetNetwork();
+                _network = await _blockchainReader.GetNetworkNameAsync();
+                _link = _network == "mainnet" ? 
+                    "https://etherscan.io/tx" :
+                    $"https://{_network}.etherscan.io/tx";
             }
 
             ulong lastProcessedHeight = 0;
-            ulong lastConfirmedHeight = await GetLastConfirmedHeightAsync();
+            ulong lastConfirmedHeight = await _blockchainReader.GetLastConfirmedHeightAsync(_trackingSettings.ConfirmationLimit);
 
             if (!ulong.TryParse(await _campaignInfoRepository.GetValueAsync(CampaignInfoType.LastProcessedBlockEth), out lastProcessedHeight) || 
                 lastProcessedHeight == 0)
@@ -78,82 +83,40 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             await _log.WriteInfoAsync(_component, _process, _network, $"{blockCount} block(s) processed; {txCount} payment transactions queued");
         }
 
-        private async Task<int> ProcessBlock(ulong height)
+        public async Task<int> ProcessBlock(ulong height)
         {
-            var hexHeight = new HexBigInteger(height);
+            var block = await _blockchainReader.GetBlockInfoAsync(height);
 
-            // we need to get header to extract timestamp of block
-            var block = await _web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(hexHeight);
-            var blockTimestamp = DateTimeOffset.FromUnixTimeSeconds((long)block.Timestamp.Value);
-
-            if (block.TransactionHashes.Length == 0)
+            // check if there is any transaction within block
+            if (block.IsEmpty)
             {
-                // empty block
                 return 0;
             }
 
-            // we need to use traces instead of regular data to get all tx info including inner transactions
-            var traceParams = new { fromBlock = hexHeight, toBlock = hexHeight };
-            var blockTransactions = await _web3.Client.SendRequestAsync<TransactionTrace[]>("trace_filter", null, traceParams);
-            
-            // amount of payment transactions
-            var count = 0;
+            // but even non-empty block can contain zero payment transactions
+            var transactions = await _blockchainReader.GetBlockTransactionsAsync(height, paymentsOnly: true);
 
-            foreach (var tx in blockTransactions.Where(t => !string.IsNullOrWhiteSpace(t.Action?.To) && t.Action?.Value?.Value > 0))
+            foreach (var tx in transactions)
             {
-                var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value);
-                var destinationAddress = _addressUtil.ConvertToChecksumAddress(tx.Action.To);
+                var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value); //  WEI to ETH
+                var destinationAddress = _addressUtil.ConvertToChecksumAddress(tx.Action.To); // lower-case to checksum representation
+                var link = $"{_link}/{tx.TransactionHash}";
 
                 await _transactionQueue.SendAsync(new BlockchainTransactionMessage
                 {
                     BlockId = tx.BlockHash,
-                    BlockTimestamp = blockTimestamp,
+                    BlockTimestamp = block.Timestamp,
                     TransactionId = tx.TransactionHash,
                     DestinationAddress = destinationAddress,
                     CurrencyType = CurrencyType.Ether,
-                    Amount = amount
+                    Amount = amount,
+                    Link = link
                 });
-
-                count++;
             }
 
             await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEth, height.ToString());
 
-            return count;
+            return transactions.Length;
         }
-
-        private async Task<ulong> GetLastConfirmedHeightAsync()
-        {
-            var lastHeightHex = await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync();
-            var lastHeight = (ulong)lastHeightHex.Value;
-
-            return lastHeight - _trackingSettings.ConfirmationLimit;
-        }
-
-        private async Task<string> GetNetwork()
-        {
-            return await _web3.Client.SendRequestAsync<string>("parity_chain");
-        }
-
-        private async Task<TransactionTrace[]> TraceTransaction(string transactionHash)
-        {
-            return await _web3.Client.SendRequestAsync<TransactionTrace[]>("trace_transaction", null, transactionHash);
-        }
-
-        private class TransactionTrace
-        {
-            public TransactionTraceAction Action { get; set; }
-            public string BlockHash { get; set; }
-            public string TransactionHash { get; set; }
-            public string Type { get; set; }
-        }
-
-        private class TransactionTraceAction
-        {
-            public string From { get; set; }
-            public string To { get; set; }
-            public HexBigInteger Value { get; set; }
-        }
-
     }
 }

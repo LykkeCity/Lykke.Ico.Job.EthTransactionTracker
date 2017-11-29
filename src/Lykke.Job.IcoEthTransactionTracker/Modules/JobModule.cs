@@ -1,4 +1,5 @@
-﻿using Autofac;
+﻿using System;
+using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Common.Log;
 using Lykke.Ico.Core.Queues;
@@ -10,6 +11,7 @@ using Lykke.Job.IcoEthTransactionTracker.PeriodicalHandlers;
 using Lykke.Job.IcoEthTransactionTracker.Services;
 using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
+using Nethereum.JsonRpc.Client;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Modules
 {
@@ -43,6 +45,8 @@ namespace Lykke.Job.IcoEthTransactionTracker.Modules
             //  .As<IQuotesPublisher>()
             //  .WithParameter(TypedParameter.From(_settings.Rabbit.ConnectionString))
 
+            IClient nethereumRpcClient = new RpcClient(new Uri(_settings.Tracking.EthereumUrl));
+
             builder.RegisterInstance(_log)
                 .As<ILog>()
                 .SingleInstance();
@@ -64,6 +68,10 @@ namespace Lykke.Job.IcoEthTransactionTracker.Modules
             builder.RegisterType<QueuePublisher<BlockchainTransactionMessage>>()
                 .As<IQueuePublisher<BlockchainTransactionMessage>>()
                 .WithParameter(TypedParameter.From(_azureQueueSettingsManager.Nested(x => x.ConnectionString)));
+
+            builder.RegisterType<BlockchainReader>()
+                .As<IBlockchainReader>()
+                .WithParameter(TypedParameter.From(nethereumRpcClient));
 
             builder.RegisterType<TransactionTrackingService>()
                 .As<ITransactionTrackingService>()
