@@ -73,14 +73,17 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             var blockRange = blockCount > 1 ? $"[{from} - {to}]" : $"[{to}]";
             var txCount = 0;
 
-            await _log.WriteInfoAsync(_component, _process, _network, $"Processing block(s) {blockRange} started");
+            await _log.WriteInfoAsync(_component, _process, _network,
+                $"Processing block(s) {blockRange} started");
 
             for (var h = from; h <= to; h++)
             {
                 txCount += await ProcessBlock(h);
+                await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEth, h.ToString());
             }
 
-            await _log.WriteInfoAsync(_component, _process, _network, $"{blockCount} block(s) processed; {txCount} payment transactions queued");
+            await _log.WriteInfoAsync(_component, _process, _network, 
+                $"Processing block(s) {blockRange} completed; {blockCount} block(s) processed; {txCount} payment transactions queued");
         }
 
         public async Task<int> ProcessBlock(ulong height)
@@ -90,6 +93,8 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             // check if there is any transaction within block
             if (block.IsEmpty)
             {
+                await _log.WriteInfoAsync(_component, _process, _network, 
+                    $"Block [{height}] is empty; block skipped");
                 return 0;
             }
 
@@ -114,7 +119,8 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 });
             }
 
-            await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEth, height.ToString());
+            await _log.WriteInfoAsync(_component, _process, _network, 
+                $"Block [{height}] processed; {transactions.Length} payment transactions queued");
 
             return transactions.Length;
         }
