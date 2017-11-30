@@ -1,20 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Lykke.Job.IcoEthTransactionTracker.Core.Domain.Blockchain;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Nethereum.Hex.HexTypes;
 using Nethereum.JsonRpc.Client;
-using Nethereum.Util;
 using Nethereum.Web3;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Services
 {
     public class BlockchainReader : IBlockchainReader
     {
-        private readonly AddressUtil _addressUtil = new AddressUtil();
         private readonly Web3 _web3;
 
         public BlockchainReader(IClient client)
