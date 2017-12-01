@@ -87,7 +87,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             }
 
             await _log.WriteInfoAsync(_component, _process, _network, 
-                $"Processing block(s) {blockRange} completed; {blockCount} block(s) processed; {txCount} payment transactions queued");
+                $"Processing block(s) {blockRange} completed; {blockCount} block(s) processed; {txCount} investments queued");
         }
 
         public async Task<int> ProcessBlock(ulong height)
@@ -136,7 +136,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             }
 
             await _log.WriteInfoAsync(_component, _process, _network, 
-                $"Block [{height}] processed; {count} investment transactions queued");
+                $"Block [{height}] processed; {count} investments queued");
 
             return transactions.Length;
         }
