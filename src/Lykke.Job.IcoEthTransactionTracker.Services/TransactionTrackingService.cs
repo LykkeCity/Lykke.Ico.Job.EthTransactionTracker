@@ -7,6 +7,7 @@ using Lykke.Ico.Core;
 using Lykke.Ico.Core.Queues;
 using Lykke.Ico.Core.Queues.Transactions;
 using Lykke.Ico.Core.Repositories.CampaignInfo;
+using Lykke.Ico.Core.Repositories.InvestorAttribute;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Lykke.Job.IcoEthTransactionTracker.Core.Settings.JobSettings;
 using Nethereum.Hex.HexTypes;
@@ -22,6 +23,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         private readonly ILog _log;
         private readonly TrackingSettings _trackingSettings;
         private readonly ICampaignInfoRepository _campaignInfoRepository;
+        private readonly IInvestorAttributeRepository _investorAttributeRepository;
         private readonly IQueuePublisher<BlockchainTransactionMessage> _transactionQueue;
         private readonly IBlockchainReader _blockchainReader;
         private readonly AddressUtil _addressUtil = new AddressUtil();
@@ -32,12 +34,14 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             ILog log,
             TrackingSettings trackingSettings,
             ICampaignInfoRepository campaignInfoRepository,
+            IInvestorAttributeRepository investorAttributeRepository,
             IQueuePublisher<BlockchainTransactionMessage> transactionQueue,
             IBlockchainReader blockchainReader)
         {
             _log = log;
             _trackingSettings = trackingSettings;
             _campaignInfoRepository = campaignInfoRepository;
+            _investorAttributeRepository = investorAttributeRepository;
             _transactionQueue = transactionQueue;
             _blockchainReader = blockchainReader;
         }
@@ -100,15 +104,25 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
             // but even non-empty block can contain zero payment transactions
             var transactions = await _blockchainReader.GetBlockTransactionsAsync(height, paymentsOnly: true);
+            var count = 0;
 
             foreach (var tx in transactions)
             {
-                var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value); //  WEI to ETH
                 var destinationAddress = _addressUtil.ConvertToChecksumAddress(tx.Action.To); // lower-case to checksum representation
+                var investorEmail = await _investorAttributeRepository.GetInvestorEmailAsync(InvestorAttributeType.PayInEthAddress, destinationAddress);
+
+                if (string.IsNullOrWhiteSpace(investorEmail))
+                {
+                    // destination address is not a cash-in address of any ICO investor
+                    continue;
+                }
+
+                var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value); //  WEI to ETH
                 var link = $"{_link}/{tx.TransactionHash}";
 
                 await _transactionQueue.SendAsync(new BlockchainTransactionMessage
                 {
+                    InvestorEmail = investorEmail,
                     BlockId = tx.BlockHash,
                     BlockTimestamp = block.Timestamp,
                     TransactionId = tx.TransactionHash,
@@ -117,10 +131,12 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                     Amount = amount,
                     Link = link
                 });
+
+                count++;
             }
 
             await _log.WriteInfoAsync(_component, _process, _network, 
-                $"Block [{height}] processed; {transactions.Length} payment transactions queued");
+                $"Block [{height}] processed; {count} investment transactions queued");
 
             return transactions.Length;
         }

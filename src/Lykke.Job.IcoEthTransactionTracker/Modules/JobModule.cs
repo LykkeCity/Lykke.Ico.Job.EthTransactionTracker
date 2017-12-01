@@ -5,6 +5,7 @@ using Common.Log;
 using Lykke.Ico.Core.Queues;
 using Lykke.Ico.Core.Queues.Transactions;
 using Lykke.Ico.Core.Repositories.CampaignInfo;
+using Lykke.Ico.Core.Repositories.InvestorAttribute;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Lykke.Job.IcoEthTransactionTracker.Core.Settings.JobSettings;
 using Lykke.Job.IcoEthTransactionTracker.PeriodicalHandlers;
@@ -63,6 +64,10 @@ namespace Lykke.Job.IcoEthTransactionTracker.Modules
 
             builder.RegisterType<CampaignInfoRepository>()
                 .As<ICampaignInfoRepository>()
+                .WithParameter(TypedParameter.From(_dbSettingsManager.Nested(x => x.DataConnString)));
+
+            builder.RegisterType<InvestorAttributeRepository>()
+                .As<IInvestorAttributeRepository>()
                 .WithParameter(TypedParameter.From(_dbSettingsManager.Nested(x => x.DataConnString)));
 
             builder.RegisterType<QueuePublisher<BlockchainTransactionMessage>>()
