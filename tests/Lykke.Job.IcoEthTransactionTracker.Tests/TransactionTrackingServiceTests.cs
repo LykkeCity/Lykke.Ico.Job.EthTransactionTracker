@@ -47,7 +47,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
             txFactory = txFactory ?? defaultTxFactory;
 
             _lastProcessed = lastProcessed.ToString();
-            _trackingSettings = new TrackingSettings { ConfirmationLimit = 0, StartHeight = startHeight };
+            _trackingSettings = new TrackingSettings { ConfirmationLimit = 0, StartHeight = startHeight, EthereumNetwork="testnet" };
             _log = new LogToMemory();
             _campaignInfoRepository = new Mock<ICampaignInfoRepository>();
 
@@ -75,10 +75,6 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
                 .Returns(() => Task.CompletedTask);
 
             _blockchainReader = new Mock<IBlockchainReader>();
-
-            _blockchainReader
-                .Setup(m => m.GetNetworkNameAsync())
-                .Returns(() => Task.FromResult("testnet"));
 
             _blockchainReader
                 .Setup(m => m.GetLastConfirmedHeightAsync(It.IsAny<ulong>()))

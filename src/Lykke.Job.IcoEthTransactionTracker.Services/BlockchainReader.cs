@@ -13,19 +13,16 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
     {
         private readonly Web3 _web3;
 
-        public BlockchainReader(IClient client)
+        public BlockchainReader(string ethereumUrl)
         {
+            var client = new RpcClient(new Uri(ethereumUrl));
+
             _web3 = new Web3(client);
         }
 
         public async Task<UInt64> GetLastConfirmedHeightAsync(UInt64 confirmationLimit)
         {
             return (UInt64)(await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync()).Value - confirmationLimit;
-        }
-
-        public async Task<String> GetNetworkNameAsync()
-        {
-            return await _web3.Client.SendRequestAsync<String>("parity_chain");
         }
 
         public async Task<TransactionTrace[]> GetBlockTransactionsAsync(UInt64 height, bool paymentsOnly = true)

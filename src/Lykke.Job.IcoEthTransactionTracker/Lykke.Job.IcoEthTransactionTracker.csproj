@@ -50,7 +50,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Lykke.Job.IcoEthTransactionTracker.AzureRepositories\Lykke.Job.IcoEthTransactionTracker.AzureRepositories.csproj" />
     <ProjectReference Include="..\Lykke.Job.IcoEthTransactionTracker.Core\Lykke.Job.IcoEthTransactionTracker.Core.csproj" />
     <ProjectReference Include="..\Lykke.Job.IcoEthTransactionTracker.Services\Lykke.Job.IcoEthTransactionTracker.Services.csproj" />
   </ItemGroup>

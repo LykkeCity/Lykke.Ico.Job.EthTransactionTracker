@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Numerics;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Ico.Core;
 using Lykke.Ico.Core.Queues;
@@ -10,9 +7,7 @@ using Lykke.Ico.Core.Repositories.CampaignInfo;
 using Lykke.Ico.Core.Repositories.InvestorAttribute;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Lykke.Job.IcoEthTransactionTracker.Core.Settings.JobSettings;
-using Nethereum.Hex.HexTypes;
 using Nethereum.Util;
-using Nethereum.Web3;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Services
 {
@@ -27,8 +22,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         private readonly IQueuePublisher<BlockchainTransactionMessage> _transactionQueue;
         private readonly IBlockchainReader _blockchainReader;
         private readonly AddressUtil _addressUtil = new AddressUtil();
-        private string _network;
-        private string _link;
+        private readonly string _network;
 
         public TransactionTrackingService(
             ILog log,
@@ -44,23 +38,15 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             _investorAttributeRepository = investorAttributeRepository;
             _transactionQueue = transactionQueue;
             _blockchainReader = blockchainReader;
+            _network = _trackingSettings.EthereumNetwork.ToLower();
         }
 
         public async Task Execute()
         {
-            if (string.IsNullOrWhiteSpace(_network))
-            {
-                _network = await _blockchainReader.GetNetworkNameAsync();
-                _link = _network == "mainnet" ? 
-                    "https://etherscan.io/tx" :
-                    $"https://{_network}.etherscan.io/tx";
-            }
+            var lastConfirmedHeight = await _blockchainReader.GetLastConfirmedHeightAsync(_trackingSettings.ConfirmationLimit);
+            var lastProcessedBlockEth = await _campaignInfoRepository.GetValueAsync(CampaignInfoType.LastProcessedBlockEth);
 
-            ulong lastProcessedHeight = 0;
-            ulong lastConfirmedHeight = await _blockchainReader.GetLastConfirmedHeightAsync(_trackingSettings.ConfirmationLimit);
-
-            if (!ulong.TryParse(await _campaignInfoRepository.GetValueAsync(CampaignInfoType.LastProcessedBlockEth), out lastProcessedHeight) || 
-                lastProcessedHeight == 0)
+            if (!ulong.TryParse(lastProcessedBlockEth, out var lastProcessedHeight) || lastProcessedHeight == 0)
             {
                 lastProcessedHeight = _trackingSettings.StartHeight;
             }
@@ -78,7 +64,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             var txCount = 0;
 
             await _log.WriteInfoAsync(_component, _process, _network,
-                $"Processing block(s) {blockRange} started");
+                $"Processing block(s) {blockRange} started in network");
 
             for (var h = from; h <= to; h++)
             {
@@ -97,7 +83,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             // check if there is any transaction within block
             if (block.IsEmpty)
             {
-                await _log.WriteInfoAsync(_component, _process, _network, 
+                await _log.WriteInfoAsync(_component, nameof(ProcessBlock), _network, 
                     $"Block [{height}] is empty; block skipped");
                 return 0;
             }
@@ -118,7 +104,9 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 }
 
                 var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value); //  WEI to ETH
-                var link = $"{_link}/{tx.TransactionHash}";
+                var link = _network == "mainnet" ?
+                    $"https://etherscan.io/tx/{tx.TransactionHash}" : 
+                    $"https://{_network}.etherscan.io/tx/{tx.TransactionHash}";
 
                 await _transactionQueue.SendAsync(new BlockchainTransactionMessage
                 {
@@ -135,7 +123,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 count++;
             }
 
-            await _log.WriteInfoAsync(_component, _process, _network, 
+            await _log.WriteInfoAsync(_component, nameof(ProcessBlock), _network, 
                 $"Block [{height}] processed; {count} investments queued");
 
             return transactions.Length;

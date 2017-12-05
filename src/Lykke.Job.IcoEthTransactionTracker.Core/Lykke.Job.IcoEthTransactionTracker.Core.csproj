@@ -10,8 +10,4 @@
     <PackageReference Include="Nethereum.Hex" Version="2.1.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\contract\Lykke.Job.IcoEthTransactionTracker.Contract\Lykke.Job.IcoEthTransactionTracker.Contract.csproj" />
-  </ItemGroup>
-
 </Project>
