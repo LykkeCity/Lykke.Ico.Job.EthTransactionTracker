@@ -47,7 +47,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
             txFactory = txFactory ?? defaultTxFactory;
 
             _lastProcessed = lastProcessed.ToString();
-            _trackingSettings = new TrackingSettings { ConfirmationLimit = 0, StartHeight = startHeight, EthereumNetwork="testnet" };
+            _trackingSettings = new TrackingSettings { ConfirmationLimit = 0, StartHeight = startHeight, EthNetwork="testnet" };
             _log = new LogToMemory();
             _campaignInfoRepository = new Mock<ICampaignInfoRepository>();
 

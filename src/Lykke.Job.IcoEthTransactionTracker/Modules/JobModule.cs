@@ -61,7 +61,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Modules
 
             builder.RegisterType<BlockchainReader>()
                 .As<IBlockchainReader>()
-                .WithParameter(TypedParameter.From(_settings.Tracking.EthereumUrl));
+                .WithParameter(TypedParameter.From(_settings.Tracking.EthUrl));
 
             builder.RegisterType<TransactionTrackingService>()
                 .As<ITransactionTrackingService>()

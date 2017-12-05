@@ -38,7 +38,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             _investorAttributeRepository = investorAttributeRepository;
             _transactionQueue = transactionQueue;
             _blockchainReader = blockchainReader;
-            _network = _trackingSettings.EthereumNetwork.ToLower();
+            _network = _trackingSettings.EthNetwork.ToLower();
         }
 
         public async Task Execute()
