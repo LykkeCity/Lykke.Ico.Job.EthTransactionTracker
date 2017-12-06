@@ -104,9 +104,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 }
 
                 var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value); //  WEI to ETH
-                var link = _network == "mainnet" ?
-                    $"https://etherscan.io/tx/{tx.TransactionHash}" : 
-                    $"https://{_network}.etherscan.io/tx/{tx.TransactionHash}";
+                var link = $"{_trackingSettings.EthTrackerUrl}tx/{tx.TransactionHash}";
 
                 await _transactionQueue.SendAsync(new BlockchainTransactionMessage
                 {
