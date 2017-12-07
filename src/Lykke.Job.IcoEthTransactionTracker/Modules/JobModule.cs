@@ -55,8 +55,8 @@ namespace Lykke.Job.IcoEthTransactionTracker.Modules
                 .As<IInvestorAttributeRepository>()
                 .WithParameter(TypedParameter.From(_dbSettingsManager.Nested(x => x.DataConnString)));
 
-            builder.RegisterType<QueuePublisher<BlockchainTransactionMessage>>()
-                .As<IQueuePublisher<BlockchainTransactionMessage>>()
+            builder.RegisterType<QueuePublisher<TransactionMessage>>()
+                .As<IQueuePublisher<TransactionMessage>>()
                 .WithParameter(TypedParameter.From(_azureQueueSettingsManager.Nested(x => x.ConnectionString)));
 
             builder.RegisterType<BlockchainReader>()

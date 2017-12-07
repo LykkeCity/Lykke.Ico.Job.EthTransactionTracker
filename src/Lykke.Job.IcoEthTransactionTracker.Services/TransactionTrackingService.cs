@@ -19,7 +19,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         private readonly TrackingSettings _trackingSettings;
         private readonly ICampaignInfoRepository _campaignInfoRepository;
         private readonly IInvestorAttributeRepository _investorAttributeRepository;
-        private readonly IQueuePublisher<BlockchainTransactionMessage> _transactionQueue;
+        private readonly IQueuePublisher<TransactionMessage> _transactionQueue;
         private readonly IBlockchainReader _blockchainReader;
         private readonly AddressUtil _addressUtil = new AddressUtil();
         private readonly string _network;
@@ -29,7 +29,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             TrackingSettings trackingSettings,
             ICampaignInfoRepository campaignInfoRepository,
             IInvestorAttributeRepository investorAttributeRepository,
-            IQueuePublisher<BlockchainTransactionMessage> transactionQueue,
+            IQueuePublisher<TransactionMessage> transactionQueue,
             IBlockchainReader blockchainReader)
         {
             _log = log;
@@ -106,14 +106,15 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value); //  WEI to ETH
                 var link = $"{_trackingSettings.EthTrackerUrl}tx/{tx.TransactionHash}";
 
-                await _transactionQueue.SendAsync(new BlockchainTransactionMessage
+                await _transactionQueue.SendAsync(new TransactionMessage
                 {
-                    InvestorEmail = investorEmail,
+                    Email = investorEmail,
+                    UniqueId = tx.TransactionHash,
                     BlockId = tx.BlockHash,
-                    BlockTimestamp = block.Timestamp,
+                    CreatedUtc = block.Timestamp.UtcDateTime,
                     TransactionId = tx.TransactionHash,
-                    DestinationAddress = destinationAddress,
-                    CurrencyType = CurrencyType.Ether,
+                    PayInAddress = destinationAddress,
+                    Currency = CurrencyType.Ether,
                     Amount = amount,
                     Link = link
                 });

@@ -24,7 +24,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
         private TrackingSettings _trackingSettings;
         private Mock<ICampaignInfoRepository> _campaignInfoRepository;
         private Mock<IInvestorAttributeRepository> _investorAttributeRepository;
-        private Mock<IQueuePublisher<BlockchainTransactionMessage>> _transactionQueue;
+        private Mock<IQueuePublisher<TransactionMessage>> _transactionQueue;
         private Mock<IBlockchainReader> _blockchainReader;
         private string _lastProcessed = string.Empty;
 
@@ -68,10 +68,10 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
                     It.IsAny<string>()))
                 .Returns(() => Task.FromResult("test@test.test"));
 
-            _transactionQueue = new Mock<IQueuePublisher<BlockchainTransactionMessage>>();
+            _transactionQueue = new Mock<IQueuePublisher<TransactionMessage>>();
 
             _transactionQueue
-                .Setup(m => m.SendAsync(It.IsAny<BlockchainTransactionMessage>()))
+                .Setup(m => m.SendAsync(It.IsAny<TransactionMessage>()))
                 .Returns(() => Task.CompletedTask);
 
             _blockchainReader = new Mock<IBlockchainReader>();
@@ -109,7 +109,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
 
             // Assert
             Assert.Equal(lastConfirmed.ToString(), _lastProcessed);
-            _transactionQueue.Verify(m => m.SendAsync(It.IsAny<BlockchainTransactionMessage>()), Times.Exactly((int)lastConfirmed));
+            _transactionQueue.Verify(m => m.SendAsync(It.IsAny<TransactionMessage>()), Times.Exactly((int)lastConfirmed));
         }
 
         [Fact]
@@ -139,13 +139,14 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
             await svc.Execute();
 
             // Assert
-            _transactionQueue.Verify(m => m.SendAsync(It.Is<BlockchainTransactionMessage>(msg =>
+            _transactionQueue.Verify(m => m.SendAsync(It.Is<TransactionMessage>(msg =>
                 msg.Amount == eth &&
                 msg.BlockId == testBlockHash &&
-                msg.BlockTimestamp == DateTimeOffset.FromUnixTimeSeconds(1) &&
-                msg.CurrencyType == CurrencyType.Ether &&
-                msg.DestinationAddress == testAddress &&
-                msg.TransactionId == testTransactionHash)));
+                msg.CreatedUtc == DateTimeOffset.FromUnixTimeSeconds(1).UtcDateTime &&
+                msg.Currency == CurrencyType.Ether &&
+                msg.PayInAddress == testAddress &&
+                msg.TransactionId == testTransactionHash &&
+                msg.UniqueId == testTransactionHash)));
         }
     }
 }
