@@ -4,20 +4,21 @@ using System.Threading.Tasks;
 using Lykke.Job.IcoEthTransactionTracker.Core.Domain.Blockchain;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Nethereum.Hex.HexTypes;
-using Nethereum.JsonRpc.Client;
 using Nethereum.Web3;
+using System.Collections.Generic;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Services
 {
     public class BlockchainReader : IBlockchainReader
     {
         private readonly Web3 _web3;
+        private readonly bool _useTraceFilter;
 
-        public BlockchainReader(string ethereumUrl)
+        public BlockchainReader(string ethereumUrl, bool useTraceFilter = true)
         {
-            var client = new RpcClient(new Uri(ethereumUrl));
+            _web3 = new Web3(ethereumUrl);
 
-            _web3 = new Web3(client);
+            _useTraceFilter = useTraceFilter;
         }
 
         public async Task<UInt64> GetLastConfirmedHeightAsync(UInt64 confirmationLimit)
@@ -29,18 +30,36 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         {
             var blockHeight = new HexBigInteger(height);
             var traceParams = new { fromBlock = blockHeight, toBlock = blockHeight };
+            var txs = new List<TransactionTrace>();
 
-            // we need to use traces instead of regular data to get all txs including inner transactions
-            var txs = await _web3.Client.SendRequestAsync<TransactionTrace[]>("trace_filter", null, traceParams);
+            if (_useTraceFilter)
+            {
+                // use traces instead of regular data to get all txs including inner transactions
+                txs.AddRange(await _web3.Client.SendRequestAsync<TransactionTrace[]>("trace_filter", null, traceParams));
+            }
+            else
+            {
+                // get transactions without inner transactions
+                var block = await _web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(height));
+                foreach (var tx in block.Transactions)
+                {
+                    txs.Add(new TransactionTrace
+                    {
+                        Action = new TransactionTraceAction { To = tx.To, From = tx.From, Value = tx.Value },
+                        BlockHash = tx.BlockHash,
+                        TransactionHash = tx.TransactionHash
+                    });
+                }
+            }
 
             if (paymentsOnly)
             {
                 txs = txs
                     .Where(t => !string.IsNullOrWhiteSpace(t.Action?.To) && t.Action?.Value?.Value > 0)
-                    .ToArray();
+                    .ToList();
             }
 
-            return txs;
+            return txs.ToArray();
         }
 
         public async Task<(DateTimeOffset Timestamp, Boolean IsEmpty)> GetBlockInfoAsync(UInt64 height)
