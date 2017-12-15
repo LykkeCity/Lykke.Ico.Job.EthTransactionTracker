@@ -22,15 +22,11 @@ namespace Lykke.Job.IcoEthTransactionTracker.PeriodicalHandlers
         {
             try
             {
-                await _trackingService.Execute();
+                await _trackingService.Track();
             }
             catch (Exception ex)
             {
-                await _log.WriteErrorAsync(
-                    nameof(TransactionTrackingHandler),
-                    nameof(Execute),
-                    string.Empty,
-                    ex);
+                await _log.WriteErrorAsync(nameof(Execute), null, ex);
             }
         }
     }

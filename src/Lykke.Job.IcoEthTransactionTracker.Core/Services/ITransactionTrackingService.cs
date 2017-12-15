@@ -4,6 +4,6 @@ namespace Lykke.Job.IcoEthTransactionTracker.Core.Services
 {
     public interface ITransactionTrackingService
     {
-        Task Execute();
+        Task Track();
     }
 }

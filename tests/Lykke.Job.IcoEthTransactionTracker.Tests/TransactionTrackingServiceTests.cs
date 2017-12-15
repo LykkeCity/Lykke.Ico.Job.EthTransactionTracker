@@ -105,7 +105,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
             var svc = Init(lastConfirmed: lastConfirmed); ;
 
             // Act
-            await svc.Execute();
+            await svc.Track();
 
             // Assert
             Assert.Equal(lastConfirmed.ToString(), _lastProcessed);
@@ -136,7 +136,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
                 });
 
             // Act
-            await svc.Execute();
+            await svc.Track();
 
             // Assert
             _transactionQueue.Verify(m => m.SendAsync(It.Is<TransactionMessage>(msg =>
