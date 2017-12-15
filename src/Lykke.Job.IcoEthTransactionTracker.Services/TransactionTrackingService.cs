@@ -127,7 +127,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 $"Network: {_network}, Block: {height}, Investments: {count}",
                 $"Block {height} processed");
 
-            return transactions.Length;
+            return count;
         }
     }
 }
