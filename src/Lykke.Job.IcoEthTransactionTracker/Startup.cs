@@ -205,6 +205,8 @@ namespace Lykke.Job.IcoEthTransactionTracker
                 aggregateLogger.AddLog(azureStorageLogger);
             }
 
+            aggregateLogger.AddIcoSlackLog(slackService);
+
             return aggregateLogger;
         }
     }
