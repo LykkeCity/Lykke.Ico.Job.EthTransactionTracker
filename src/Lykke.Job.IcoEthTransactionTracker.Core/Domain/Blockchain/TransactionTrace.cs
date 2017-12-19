@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Lykke.Job.IcoEthTransactionTracker.Core.Domain.Blockchain
+﻿namespace Lykke.Job.IcoEthTransactionTracker.Core.Domain.Blockchain
 {
     public class TransactionTrace
     {

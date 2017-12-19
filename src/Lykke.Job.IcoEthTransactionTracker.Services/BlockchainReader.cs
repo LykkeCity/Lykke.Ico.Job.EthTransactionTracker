@@ -1,11 +1,10 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Lykke.Job.IcoEthTransactionTracker.Core.Domain.Blockchain;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Nethereum.Hex.HexTypes;
 using Nethereum.Web3;
-using System.Collections.Generic;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Services
 {
@@ -17,16 +16,33 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         public BlockchainReader(string ethereumUrl, bool useTraceFilter = true)
         {
             _web3 = new Web3(ethereumUrl);
-
             _useTraceFilter = useTraceFilter;
         }
 
-        public async Task<UInt64> GetLastConfirmedHeightAsync(UInt64 confirmationLimit)
+        public async Task<ulong> GetLastConfirmedHeightAsync(ulong confirmationLimit)
         {
-            return (UInt64)(await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync()).Value - confirmationLimit;
+            return (ulong)(await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync()).Value - confirmationLimit;
         }
 
-        public async Task<TransactionTrace[]> GetBlockTransactionsAsync(UInt64 height, bool paymentsOnly = true)
+        public async Task<BlockInformation> GetBlockByHeightAsync(ulong height)
+        {
+            var block = await _web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(new HexBigInteger(height));
+            if (block != null)
+                return new BlockInformation(block);
+            else
+                return null;
+        }
+
+        public async Task<BlockInformation> GetBlockByIdAsync(string id)
+        {
+            var block = await _web3.Eth.Blocks.GetBlockWithTransactionsHashesByHash.SendRequestAsync(id);
+            if (block != null)
+                return new BlockInformation(block);
+            else
+                return null;
+        }
+
+        public async Task<TransactionTrace[]> GetBlockTransactionsAsync(ulong height, bool paymentsOnly = true)
         {
             var blockHeight = new HexBigInteger(height);
             var traceParams = new { fromBlock = blockHeight, toBlock = blockHeight };
@@ -60,15 +76,6 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             }
 
             return txs.ToArray();
-        }
-
-        public async Task<(DateTimeOffset Timestamp, Boolean IsEmpty)> GetBlockInfoAsync(UInt64 height)
-        {
-            var block = await _web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(new HexBigInteger(height));
-            var timestamp = DateTimeOffset.FromUnixTimeSeconds((Int64)block.Timestamp.Value);
-            var isEmpty = block.TransactionHashes.Length == 0;
-
-            return (timestamp, isEmpty);
         }
     }
 }

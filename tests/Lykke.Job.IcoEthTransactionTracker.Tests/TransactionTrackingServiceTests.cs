@@ -81,8 +81,14 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
                 .Returns(() => Task.FromResult(lastConfirmed));
 
             _blockchainReader
-                .Setup(m => m.GetBlockInfoAsync(It.IsInRange(lastProcessed, lastConfirmed, Range.Inclusive)))
-                .Returns((ulong h) => Task.FromResult((DateTimeOffset.FromUnixTimeSeconds((long)h), false)));
+                .Setup(m => m.GetBlockByHeightAsync(It.IsInRange(lastProcessed, lastConfirmed, Range.Inclusive)))
+                .Returns((ulong h) => Task.FromResult(new BlockInformation
+                {
+                    BlockId = h.ToString(),
+                    IsEmpty = false,
+                    Height = h,
+                    Timestamp = DateTimeOffset.FromUnixTimeSeconds((long)h)
+                }));
 
             _blockchainReader
                 .Setup(m => m.GetBlockTransactionsAsync(It.IsInRange(lastProcessed, lastConfirmed, Range.Inclusive), It.Is<bool>(v => v == true)))
