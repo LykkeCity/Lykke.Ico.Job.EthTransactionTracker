@@ -78,7 +78,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             // check if there is any transaction within block
             if (blockInfo.IsEmpty)
             {
-                await _log.WriteInfoAsync(nameof(ProcessBlockByHeight),
+                await _log.WriteInfoAsync(nameof(ProcessBlock),
                     $"Network: {_network}, Block: {blockInfo.ToJson()}",
                     $"Block {blockInfo.Height} is empty, therefore skipped");
 
@@ -119,7 +119,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 count++;
             }
 
-            await _log.WriteInfoAsync(nameof(ProcessBlockByHeight),
+            await _log.WriteInfoAsync(nameof(ProcessBlock),
                 $"Network: {_network}, Block: {blockInfo.ToJson()}, Investments: {count}",
                 $"Block {blockInfo.Height} processed");
 
@@ -169,7 +169,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
             var txCount = 0;
 
-            await _log.WriteInfoAsync(nameof(Track),
+            await _log.WriteInfoAsync(nameof(ProcessRange),
                 $"Network: {_network}, Range: {blockRange}",
                 $"Range processing started");
 
@@ -183,7 +183,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 }
             }
 
-            await _log.WriteInfoAsync(nameof(Track),
+            await _log.WriteInfoAsync(nameof(ProcessRange),
                 $"Network: {_network}, Range: {blockRange}, Investments: {txCount}",
                 $"Range processing completed");
 
