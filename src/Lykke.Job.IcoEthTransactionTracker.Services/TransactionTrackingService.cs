@@ -92,11 +92,6 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             foreach (var tx in transactions)
             {
                 var payInAddress = _addressUtil.ConvertToChecksumAddress(tx.Action.To); // lower-case to checksum representation
-
-                await _log.WriteInfoAsync(nameof(ProcessBlock),
-                    $"Block.Height: {blockInfo.Height}, payInAddress: {payInAddress}",
-                    $"Log PayInAddress");
-
                 var email = await _investorAttributeRepository.GetInvestorEmailAsync(InvestorAttributeType.PayInEthAddress, payInAddress);
 
                 if (string.IsNullOrWhiteSpace(email))
