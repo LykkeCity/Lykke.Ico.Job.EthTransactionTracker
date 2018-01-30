@@ -47,7 +47,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             var lastConfirmedHeight = await _blockchainReader.GetLastConfirmedHeightAsync(_trackingSettings.ConfirmationLimit);
             var lastProcessedBlockEth = await _campaignInfoRepository.GetValueAsync(CampaignInfoType.LastProcessedBlockEth);
 
-            if (!ulong.TryParse(lastProcessedBlockEth, out var lastProcessedHeight) || lastProcessedHeight == 0)
+            if (!ulong.TryParse(lastProcessedBlockEth, out var lastProcessedHeight) || lastProcessedHeight < _trackingSettings.StartHeight)
             {
                 lastProcessedHeight = _trackingSettings.StartHeight;
             }
