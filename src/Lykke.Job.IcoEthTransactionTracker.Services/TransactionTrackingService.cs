@@ -45,7 +45,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         public async Task Track()
         {
             var lastConfirmedHeight = await _blockchainReader.GetLastConfirmedHeightAsync(_trackingSettings.ConfirmationLimit);
-            var lastProcessedBlockEth = await _campaignInfoRepository.GetValueAsync(CampaignInfoType.LastProcessedBlockEth);
+            var lastProcessedBlockEth = await GetLastProcessedBlock();
 
             if (!ulong.TryParse(lastProcessedBlockEth, out var lastProcessedHeight) || lastProcessedHeight < _trackingSettings.StartHeight)
             {
@@ -54,7 +54,6 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
             if (lastProcessedHeight >= lastConfirmedHeight)
             {
-                // all processed or start height is greater than current height
                 await _log.WriteInfoAsync(nameof(Track),
                     $"Network: {_network}, LastProcessedHeight: {lastProcessedHeight}, LastConfirmedHeight: {lastConfirmedHeight}",
                     $"No new data");
@@ -62,10 +61,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 return;
             }
 
-            await ProcessRange(
-                lastProcessedHeight + 1,
-                lastConfirmedHeight,
-                saveProgress: true);
+            await ProcessRange(lastProcessedHeight + 1, lastConfirmedHeight, saveProgress: true);
         }
 
         public async Task<int> ProcessBlock(BlockInformation blockInfo)
@@ -120,7 +116,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             }
 
             await _log.WriteInfoAsync(nameof(ProcessBlock),
-                $"Network: {_network}, Block: {blockInfo.ToJson()}, Investments: {count}",
+                $"Investments: {count}, Network: {_network}, Block: {blockInfo.ToJson()}",
                 $"Block {blockInfo.Height} processed");
 
             return count;
@@ -179,7 +175,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
                 if (saveProgress)
                 {
-                    await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEth, h.ToString());
+                    await SaveLastProcessedBlock(h);
                 }
             }
 
@@ -188,6 +184,30 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 $"Range processing completed");
 
             return txCount;
+        }
+
+        private async Task SaveLastProcessedBlock(ulong h)
+        {
+            if (_trackingSettings.UseTraceFilter)
+            {
+                await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEth, h.ToString());
+            }
+            else
+            {
+                await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEthInfura, h.ToString());
+            }
+        }
+
+        private async Task<string> GetLastProcessedBlock()
+        {
+            if (_trackingSettings.UseTraceFilter)
+            {
+                return await _campaignInfoRepository.GetValueAsync(CampaignInfoType.LastProcessedBlockEth);
+            }
+            else
+            {
+                return await _campaignInfoRepository.GetValueAsync(CampaignInfoType.LastProcessedBlockEthInfura);
+            }
         }
     }
 }

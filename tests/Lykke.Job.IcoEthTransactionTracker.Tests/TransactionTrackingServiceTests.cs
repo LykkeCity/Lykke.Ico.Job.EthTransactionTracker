@@ -59,12 +59,12 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
 
             // get _lastProcessed
             _campaignInfoRepository
-                .Setup(m => m.GetValueAsync(It.Is<CampaignInfoType>(t => t == CampaignInfoType.LastProcessedBlockEth)))
+                .Setup(m => m.GetValueAsync(It.IsAny<CampaignInfoType>()))
                 .Returns(() => Task.FromResult(_lastProcessed));
 
             // set _lastProcessed
             _campaignInfoRepository
-                .Setup(m => m.SaveValueAsync(It.Is<CampaignInfoType>(t => t == CampaignInfoType.LastProcessedBlockEth), It.IsAny<string>()))
+                .Setup(m => m.SaveValueAsync(It.IsAny<CampaignInfoType>(), It.IsAny<string>()))
                 .Callback((CampaignInfoType t, string v) => _lastProcessed = v)
                 .Returns(() => Task.CompletedTask);
 
