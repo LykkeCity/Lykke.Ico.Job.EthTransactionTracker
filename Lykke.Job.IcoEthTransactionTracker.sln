@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27004.2006
+VisualStudioVersion = 15.0.27130.2003
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Job.IcoEthTransactionTracker", "src\Lykke.Job.IcoEthTransactionTracker\Lykke.Job.IcoEthTransactionTracker.csproj", "{5566FD3E-0DB6-4BF3-A98D-4A1181B3E02C}"
 EndProject
@@ -9,11 +9,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Job.IcoEthTransaction
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "1. Infrastructure", "1. Infrastructure", "{68994F01-8220-4B7C-9AB8-14E137C44AE5}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "2. Tests", "2. Tests", "{AB790991-CEB2-44A5-9C0C-A2D26DB86D41}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "3. Tests", "3. Tests", "{AB790991-CEB2-44A5-9C0C-A2D26DB86D41}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Job.IcoEthTransactionTracker.Services", "src\Lykke.Job.IcoEthTransactionTracker.Services\Lykke.Job.IcoEthTransactionTracker.Services.csproj", "{D42134F9-A73E-4890-966D-746FE732934E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Job.IcoEthTransactionTracker.Tests", "tests\Lykke.Job.IcoEthTransactionTracker.Tests\Lykke.Job.IcoEthTransactionTracker.Tests.csproj", "{AAC9F450-14D7-4482-BC12-7C55006864E2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "2. Repositories", "2. Repositories", "{B555721A-2CDA-42D8-B629-CDFAF2AF3962}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Job.IcoEthTransactionTracker.AzureRepositories", "src\Lykke.Job.IcoEthTransactionTracker.AzureRepositories\Lykke.Job.IcoEthTransactionTracker.AzureRepositories.csproj", "{F30829E1-AF0D-4438-A6B7-FB2C3E254CF0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -37,6 +41,10 @@ Global
 		{AAC9F450-14D7-4482-BC12-7C55006864E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AAC9F450-14D7-4482-BC12-7C55006864E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AAC9F450-14D7-4482-BC12-7C55006864E2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F30829E1-AF0D-4438-A6B7-FB2C3E254CF0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F30829E1-AF0D-4438-A6B7-FB2C3E254CF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F30829E1-AF0D-4438-A6B7-FB2C3E254CF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F30829E1-AF0D-4438-A6B7-FB2C3E254CF0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -45,6 +53,7 @@ Global
 		{0415D4B4-5275-4B5C-AFD5-644572CD91CD} = {68994F01-8220-4B7C-9AB8-14E137C44AE5}
 		{D42134F9-A73E-4890-966D-746FE732934E} = {68994F01-8220-4B7C-9AB8-14E137C44AE5}
 		{AAC9F450-14D7-4482-BC12-7C55006864E2} = {AB790991-CEB2-44A5-9C0C-A2D26DB86D41}
+		{F30829E1-AF0D-4438-A6B7-FB2C3E254CF0} = {B555721A-2CDA-42D8-B629-CDFAF2AF3962}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D2419990-C093-4EE2-AFE9-80857ECBB147}

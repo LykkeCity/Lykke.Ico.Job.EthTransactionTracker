@@ -1,15 +1,14 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using Lykke.Ico.Core;
-using Lykke.Ico.Core.Queues;
-using Lykke.Ico.Core.Queues.Transactions;
-using Lykke.Ico.Core.Repositories.CampaignInfo;
-using Lykke.Ico.Core.Repositories.InvestorAttribute;
 using Lykke.Job.IcoEthTransactionTracker.Core.Domain.Blockchain;
+using Lykke.Job.IcoEthTransactionTracker.Core.Domain.Settings;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Lykke.Job.IcoEthTransactionTracker.Core.Settings.JobSettings;
+using Lykke.Service.IcoCommon.Client;
+using Lykke.Service.IcoCommon.Client.Models;
 using Nethereum.Util;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Services
@@ -18,42 +17,40 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
     {
         private readonly ILog _log;
         private readonly TrackingSettings _trackingSettings;
-        private readonly ICampaignInfoRepository _campaignInfoRepository;
-        private readonly IInvestorAttributeRepository _investorAttributeRepository;
-        private readonly IQueuePublisher<TransactionMessage> _transactionQueue;
+        private readonly ISettingsRepository _settingsRepository;
         private readonly IBlockchainReader _blockchainReader;
+        private readonly IIcoCommonServiceClient _commonServiceClient;
         private readonly AddressUtil _addressUtil = new AddressUtil();
         private readonly string _network;
 
         public TransactionTrackingService(
             ILog log,
             TrackingSettings trackingSettings,
-            ICampaignInfoRepository campaignInfoRepository,
-            IInvestorAttributeRepository investorAttributeRepository,
-            IQueuePublisher<TransactionMessage> transactionQueue,
-            IBlockchainReader blockchainReader)
+            ISettingsRepository settingsRepository,
+            IBlockchainReader blockchainReader,
+            IIcoCommonServiceClient commonServiceClient)
         {
             _log = log;
             _trackingSettings = trackingSettings;
-            _campaignInfoRepository = campaignInfoRepository;
-            _investorAttributeRepository = investorAttributeRepository;
-            _transactionQueue = transactionQueue;
+            _settingsRepository = settingsRepository;
             _blockchainReader = blockchainReader;
+            _commonServiceClient = commonServiceClient;
             _network = _trackingSettings.EthNetwork.ToLower();
         }
 
         public async Task Track()
         {
             var lastConfirmedHeight = await _blockchainReader.GetLastConfirmedHeightAsync(_trackingSettings.ConfirmationLimit);
-            var lastProcessedBlockEth = await GetLastProcessedBlock();
+            var lastProcessedHeight = await _settingsRepository.GetLastProcessedBlockHeightAsync();
 
-            if (!ulong.TryParse(lastProcessedBlockEth, out var lastProcessedHeight) || lastProcessedHeight < _trackingSettings.StartHeight)
+            if (lastProcessedHeight < _trackingSettings.StartHeight)
             {
                 lastProcessedHeight = _trackingSettings.StartHeight;
             }
 
             if (lastProcessedHeight >= lastConfirmedHeight)
             {
+                // all processed or start height is greater than current height
                 await _log.WriteInfoAsync(nameof(Track),
                     $"Network: {_network}, LastProcessedHeight: {lastProcessedHeight}, LastConfirmedHeight: {lastConfirmedHeight}",
                     $"No new data");
@@ -83,36 +80,25 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
             // but even non-empty block can contain zero payment transactions
             var transactions = await _blockchainReader.GetBlockTransactionsAsync(blockInfo.Height, paymentsOnly: true);
-            var count = 0;
 
-            foreach (var tx in transactions)
-            {
-                var payInAddress = _addressUtil.ConvertToChecksumAddress(tx.Action.To); // lower-case to checksum representation
-                var email = await _investorAttributeRepository.GetInvestorEmailAsync(InvestorAttributeType.PayInEthAddress, payInAddress);
-
-                if (string.IsNullOrWhiteSpace(email))
+            var transactionModels = transactions
+                .Select(tx => new TransactionModel()
                 {
-                    // destination address is not a cash-in address of any ICO investor
-                    continue;
-                }
-
-                var amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value); //  WEI to ETH
-                var link = $"{_trackingSettings.EthTrackerUrl}tx/{tx.TransactionHash}";
-
-                await _transactionQueue.SendAsync(new TransactionMessage
-                {
-                    Email = email,
-                    UniqueId = tx.TransactionHash,
+                    Amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value), //  WEI to ETH
                     BlockId = tx.BlockHash,
                     CreatedUtc = blockInfo.Timestamp.UtcDateTime,
+                    Currency = CurrencyType.ETH,
+                    PayInAddress = _addressUtil.ConvertToChecksumAddress(tx.Action.To), // lower-case to checksum representation
                     TransactionId = tx.TransactionHash,
-                    PayInAddress = payInAddress,
-                    Currency = CurrencyType.Ether,
-                    Amount = amount,
-                    Link = link
-                });
+                    UniqueId = tx.TransactionHash
+                })
+                .ToList();
 
-                count++;
+            var count = 0;
+
+            if (transactionModels.Any())
+            {
+                count = await _commonServiceClient.HandleTransactionsAsync(transactionModels);
             }
 
             await _log.WriteInfoAsync(nameof(ProcessBlock),
@@ -175,7 +161,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
                 if (saveProgress)
                 {
-                    await SaveLastProcessedBlock(h);
+                    await _settingsRepository.UpdateLastProcessedBlockHeightAsync(h);
                 }
             }
 
@@ -184,30 +170,6 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 $"Range processing completed");
 
             return txCount;
-        }
-
-        private async Task SaveLastProcessedBlock(ulong h)
-        {
-            if (_trackingSettings.UseTraceFilter)
-            {
-                await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEth, h.ToString());
-            }
-            else
-            {
-                await _campaignInfoRepository.SaveValueAsync(CampaignInfoType.LastProcessedBlockEthInfura, h.ToString());
-            }
-        }
-
-        private async Task<string> GetLastProcessedBlock()
-        {
-            if (_trackingSettings.UseTraceFilter)
-            {
-                return await _campaignInfoRepository.GetValueAsync(CampaignInfoType.LastProcessedBlockEth);
-            }
-            else
-            {
-                return await _campaignInfoRepository.GetValueAsync(CampaignInfoType.LastProcessedBlockEthInfura);
-            }
         }
     }
 }
