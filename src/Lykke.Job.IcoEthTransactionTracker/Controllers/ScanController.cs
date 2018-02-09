@@ -20,8 +20,8 @@ namespace Lykke.Job.IcoEthTransactionTracker.Controllers
         /// </summary>
         /// <param name="block">Block id (hash) or height</param>
         /// <returns></returns>
-        [HttpPost("{block}")]
-        public async Task<IActionResult> Block([FromRoute]string block)
+        [HttpPost]
+        public async Task<IActionResult> Block(string block)
         {
             block = block.Trim();
 
@@ -42,11 +42,20 @@ namespace Lykke.Job.IcoEthTransactionTracker.Controllers
         /// <param name="to">To height</param>
         /// <returns></returns>
         [HttpPost]
-        public async Task<IActionResult> Range(
-            [FromQuery]ulong from, 
-            [FromQuery]ulong to)
+        public async Task<IActionResult> Range(ulong from, ulong to)
         {
             return Json(new ScanResponse(await _transactionTrackingService.ProcessRange(from, to, saveProgress: false)));
+        }
+
+        /// <summary>
+        /// Overwrites last processed block heigth
+        /// </summary>
+        /// <param name="height"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public async Task Reset(ulong height)
+        {
+            await _transactionTrackingService.ResetProcessedBlockHeight(height);
         }
     }
 }

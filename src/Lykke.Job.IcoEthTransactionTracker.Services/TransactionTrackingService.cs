@@ -171,5 +171,10 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
             return txCount;
         }
+
+        public async Task ResetProcessedBlockHeight(ulong height)
+        {
+            await _settingsRepository.UpdateLastProcessedBlockHeightAsync(height);
+        }
     }
 }
