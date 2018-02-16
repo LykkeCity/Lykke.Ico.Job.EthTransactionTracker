@@ -25,7 +25,20 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
         public async Task<ulong> GetLastConfirmedHeightAsync(ulong confirmationLimit)
         {
-            return (ulong)(await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync()).Value - confirmationLimit;
+            try
+            {
+                return (ulong)(await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync()).Value - confirmationLimit;
+            }
+            catch (Exception ex)
+            {
+                if (!_useTraceFilter && ex.ToString().Contains("502 (Bad Gateway)"))
+                {
+                    throw new InfuraException($"Failed to get last confirmed height. " +
+                        $"Error returned: 502 (Bad Gateway)", ex);
+                }
+
+                throw;
+            }
         }
 
         public async Task<BlockInformation> GetBlockByHeightAsync(ulong height)
@@ -49,7 +62,6 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
                 throw;
             }
-
         }
 
         public async Task<BlockInformation> GetBlockByIdAsync(string id)
