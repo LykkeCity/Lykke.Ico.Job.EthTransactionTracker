@@ -11,6 +11,7 @@ using Lykke.Job.IcoEthTransactionTracker.Core.Domain.Blockchain;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Lykke.Job.IcoEthTransactionTracker.Core.Settings.JobSettings;
 using Nethereum.Util;
+using Lykke.Job.IcoEthTransactionTracker.Core.Domain;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Services
 {
@@ -61,7 +62,15 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 return;
             }
 
-            await ProcessRange(lastProcessedHeight + 1, lastConfirmedHeight, saveProgress: true);
+            try
+            {
+                await ProcessRange(lastProcessedHeight + 1, lastConfirmedHeight, saveProgress: true);
+            }
+            catch (InfuraException ex)
+            {
+                await _log.WriteInfoAsync(nameof(TransactionTrackingService), nameof(Track),
+                    $"{ex.ToString()}", "Infura error");
+            }
         }
 
         public async Task<int> ProcessBlock(BlockInformation blockInfo)

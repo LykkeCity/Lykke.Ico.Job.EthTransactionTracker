@@ -5,6 +5,10 @@ using Lykke.Job.IcoEthTransactionTracker.Core.Domain.Blockchain;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
 using Nethereum.Hex.HexTypes;
 using Nethereum.Web3;
+using System;
+using System.Net.Http;
+using Nethereum.JsonRpc.Client;
+using Lykke.Job.IcoEthTransactionTracker.Core.Domain;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Services
 {
@@ -56,15 +60,33 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             else
             {
                 // get transactions without inner transactions
-                var block = await _web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(height));
-                foreach (var tx in block.Transactions)
+                try
                 {
-                    txs.Add(new TransactionTrace
+                    var block = await _web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(height));
+
+                    foreach (var tx in block.Transactions)
                     {
-                        Action = new TransactionTraceAction { To = tx.To, From = tx.From, Value = tx.Value },
-                        BlockHash = tx.BlockHash,
-                        TransactionHash = tx.TransactionHash
-                    });
+                        txs.Add(new TransactionTrace
+                        {
+                            Action = new TransactionTraceAction { To = tx.To, From = tx.From, Value = tx.Value },
+                            BlockHash = tx.BlockHash,
+                            TransactionHash = tx.TransactionHash
+                        });
+                    }
+                }
+                catch (RpcClientUnknownException ex)
+                {
+                    if (ex.InnerException != null && ex.InnerException is HttpRequestException)
+                    {
+                        var httpRequestException = ex.InnerException as HttpRequestException;
+                        if (httpRequestException.Message.Contains("502 (Bad Gateway)"))
+                        {
+                            throw new InfuraException($"Failed to get block={height} from infura.io. " +
+                                $"Error returned: 502 (Bad Gateway)", ex);
+                        }
+                    }
+
+                    throw;
                 }
             }
 
