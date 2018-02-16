@@ -30,11 +30,26 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
         public async Task<BlockInformation> GetBlockByHeightAsync(ulong height)
         {
-            var block = await _web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(new HexBigInteger(height));
-            if (block != null)
-                return new BlockInformation(block);
-            else
-                return null;
+            try
+            {
+                var block = await _web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(new HexBigInteger(height));
+
+                if (block != null)
+                    return new BlockInformation(block);
+                else
+                    return null;
+            }
+            catch (Exception ex)
+            {
+                if (!_useTraceFilter && ex.ToString().Contains("502 (Bad Gateway)"))
+                {
+                    throw new InfuraException($"Failed to get block={height} with tx hashes. " +
+                        $"Error returned: 502 (Bad Gateway)", ex);
+                }
+
+                throw;
+            }
+
         }
 
         public async Task<BlockInformation> GetBlockByIdAsync(string id)
@@ -74,16 +89,12 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                         });
                     }
                 }
-                catch (RpcClientUnknownException ex)
+                catch (Exception ex)
                 {
-                    if (ex.InnerException != null && ex.InnerException is HttpRequestException)
+                    if (ex.ToString().Contains("502 (Bad Gateway)"))
                     {
-                        var httpRequestException = ex.InnerException as HttpRequestException;
-                        if (httpRequestException.Message.Contains("502 (Bad Gateway)"))
-                        {
-                            throw new InfuraException($"Failed to get block={height} from infura.io. " +
-                                $"Error returned: 502 (Bad Gateway)", ex);
-                        }
+                        throw new InfuraException($"Failed to get block={height} with txs. " +
+                            $"Error returned: 502 (Bad Gateway)", ex);
                     }
 
                     throw;
