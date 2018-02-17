@@ -1,9 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Lykke.Job.IcoEthTransactionTracker.Core.Domain.Blockchain;
 using Lykke.Job.IcoEthTransactionTracker.Core.Services;
+using Lykke.Job.IcoEthTransactionTracker.Services.Helpers;
 using Nethereum.Hex.HexTypes;
+using Nethereum.JsonRpc.Client;
 using Nethereum.Web3;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Services
@@ -21,12 +24,12 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
         public async Task<ulong> GetLastConfirmedHeightAsync(ulong confirmationLimit)
         {
-            return (ulong)(await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync()).Value - confirmationLimit;
+            return (ulong)(await Try(() => _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync())).Value - confirmationLimit;
         }
 
         public async Task<BlockInformation> GetBlockByHeightAsync(ulong height)
         {
-            var block = await _web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(new HexBigInteger(height));
+            var block = await Try(() => _web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(new HexBigInteger(height)));
             if (block != null)
                 return new BlockInformation(block);
             else
@@ -35,7 +38,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
         public async Task<BlockInformation> GetBlockByIdAsync(string id)
         {
-            var block = await _web3.Eth.Blocks.GetBlockWithTransactionsHashesByHash.SendRequestAsync(id);
+            var block = await Try(() => _web3.Eth.Blocks.GetBlockWithTransactionsHashesByHash.SendRequestAsync(id));
             if (block != null)
                 return new BlockInformation(block);
             else
@@ -51,12 +54,12 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             if (_useTraceFilter)
             {
                 // use traces instead of regular data to get all txs including inner transactions
-                txs.AddRange(await _web3.Client.SendRequestAsync<TransactionTrace[]>("trace_filter", null, traceParams));
+                txs.AddRange(await Try(() => _web3.Client.SendRequestAsync<TransactionTrace[]>("trace_filter", null, traceParams)));
             }
             else
             {
                 // get transactions without inner transactions
-                var block = await _web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(height));
+                var block = await Try(() => _web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(height)));
                 foreach (var tx in block.Transactions)
                 {
                     txs.Add(new TransactionTrace
@@ -76,6 +79,16 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             }
 
             return txs.ToArray();
+        }
+
+        private async Task<T> Try<T>(Func<Task<T>> action)
+        {
+            bool NeedToRetry(Exception ex)
+            {
+                return ex is RpcClientUnknownException;
+            }
+
+            return await Retry.Try(action, NeedToRetry, 10, 50);
         }
     }
 }
