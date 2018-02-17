@@ -45,25 +45,24 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
         public async Task Track()
         {
-            var lastConfirmedHeight = await _blockchainReader.GetLastConfirmedHeightAsync(_trackingSettings.ConfirmationLimit);
-            var lastProcessedBlockEth = await GetLastProcessedBlock();
-
-            if (!ulong.TryParse(lastProcessedBlockEth, out var lastProcessedHeight) || lastProcessedHeight == 0)
-            {
-                lastProcessedHeight = _trackingSettings.StartHeight;
-            }
-
-            if (lastProcessedHeight >= lastConfirmedHeight)
-            {
-                await _log.WriteInfoAsync(nameof(Track),
-                    $"Network: {_network}, LastProcessedHeight: {lastProcessedHeight}, LastConfirmedHeight: {lastConfirmedHeight}",
-                    $"No new data");
-
-                return;
-            }
-
             try
             {
+                var lastConfirmedHeight = await _blockchainReader.GetLastConfirmedHeightAsync(_trackingSettings.ConfirmationLimit);
+                var lastProcessedBlockEth = await GetLastProcessedBlock();
+
+                if (!ulong.TryParse(lastProcessedBlockEth, out var lastProcessedHeight) || lastProcessedHeight == 0)
+                {
+                    lastProcessedHeight = _trackingSettings.StartHeight;
+                }
+
+                if (lastProcessedHeight >= lastConfirmedHeight)
+                {
+                    await _log.WriteInfoAsync(nameof(Track),
+                        $"Network: {_network}, LastProcessedHeight: {lastProcessedHeight}, LastConfirmedHeight: {lastConfirmedHeight}",
+                        $"No new data");
+
+                    return;
+                }
                 await ProcessRange(lastProcessedHeight + 1, lastConfirmedHeight, saveProgress: true);
             }
             catch (InfuraException ex)
