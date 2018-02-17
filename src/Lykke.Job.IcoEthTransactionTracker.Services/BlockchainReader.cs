@@ -141,7 +141,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 return false;
             }
 
-            return await Retry.Try(action, NeedToRetryException, 5, _log, 500);
+            return await Retry.Try(action, NeedToRetryException, 5, _log, 100);
         }
     }
 }
