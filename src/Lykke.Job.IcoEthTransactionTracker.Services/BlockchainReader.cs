@@ -9,16 +9,20 @@ using System;
 using System.Net.Http;
 using Nethereum.JsonRpc.Client;
 using Lykke.Job.IcoEthTransactionTracker.Core.Domain;
+using Lykke.Job.IcoEthTransactionTracker.Services.Helpers;
+using Common.Log;
 
 namespace Lykke.Job.IcoEthTransactionTracker.Services
 {
     public class BlockchainReader : IBlockchainReader
     {
+        private readonly ILog _log;
         private readonly Web3 _web3;
         private readonly bool _useTraceFilter;
 
-        public BlockchainReader(string ethereumUrl, bool useTraceFilter = true)
+        public BlockchainReader(ILog log, string ethereumUrl, bool useTraceFilter = true)
         {
+            _log = log;
             _web3 = new Web3(ethereumUrl);
             _useTraceFilter = useTraceFilter;
         }
@@ -27,7 +31,9 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         {
             try
             {
-                return (ulong)(await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync()).Value - confirmationLimit;
+                var blockNumber = await Execute(() => _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync());
+
+                return (ulong)blockNumber.Value - confirmationLimit;
             }
             catch (Exception ex)
             {
@@ -45,7 +51,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
         {
             try
             {
-                var block = await _web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(new HexBigInteger(height));
+                var block = await Execute(() => _web3.Eth.Blocks.GetBlockWithTransactionsHashesByNumber.SendRequestAsync(new HexBigInteger(height)));
 
                 if (block != null)
                     return new BlockInformation(block);
@@ -89,7 +95,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                 // get transactions without inner transactions
                 try
                 {
-                    var block = await _web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(height));
+                    var block = await Execute(() => _web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(height)));
 
                     foreach (var tx in block.Transactions)
                     {
@@ -121,6 +127,21 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
             }
 
             return txs.ToArray();
+        }
+
+        private async Task<T> Execute<T>(Func<Task<T>> action)
+        {
+            bool NeedToRetryException(Exception ex)
+            {
+                if (!_useTraceFilter && ex.ToString().Contains("502 (Bad Gateway)"))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            return await Retry.Try(action, NeedToRetryException, 5, _log, 500);
         }
     }
 }
