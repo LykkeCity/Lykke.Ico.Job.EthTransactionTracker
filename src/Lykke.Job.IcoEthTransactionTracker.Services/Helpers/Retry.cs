@@ -31,8 +31,6 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services.Helpers
                     {
                         await Task.Delay(delayAfterException);
                     }
-
-                    await logger.WriteErrorAsync("Retry", "Try", null, ex);
                 }
             }
         }
