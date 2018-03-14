@@ -128,7 +128,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
             // Assert
             Assert.Equal(lastConfirmed, _lastProcessed);
             _commonServiceClient.Verify(
-                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>(), It.IsAny<CancellationToken>()),
+                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>()),
                 Times.Exactly((int)lastConfirmed));
         }
 
@@ -179,11 +179,10 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
                     msg.Amount == eth &&
                     msg.BlockId == testBlockHash &&
                     msg.CreatedUtc == DateTimeOffset.FromUnixTimeSeconds(1).UtcDateTime &&
-                    msg.Currency == CurrencyType.ETH &&
+                    msg.Currency == CurrencyType.Eth &&
                     msg.PayInAddress == testAddress &&
                     msg.TransactionId == testTransactionHash &&
-                    msg.UniqueId == testTransactionHash)),
-                It.IsAny<CancellationToken>()));
+                    msg.UniqueId == testTransactionHash))));
         }
 
         [Fact]
@@ -218,7 +217,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
 
             // Assert
             _commonServiceClient.Verify(
-                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>(), It.IsAny<CancellationToken>()),
+                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>()),
                 Times.Never);
         }
 
@@ -233,7 +232,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
 
             // Assert
             _commonServiceClient.Verify(
-                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>(), It.IsAny<CancellationToken>()),
+                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>()),
                 Times.Never);
         }
 
@@ -248,7 +247,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
 
             // Assert
             _commonServiceClient.Verify(
-                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>(), It.IsAny<CancellationToken>()),
+                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>()),
                 Times.Never);
         }
 
@@ -263,7 +262,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
 
             // Assert
             _commonServiceClient.Verify(
-                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>(), It.IsAny<CancellationToken>()),
+                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>()),
                 Times.Exactly(1));
         }
 
@@ -279,7 +278,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
 
             // Assert
             _commonServiceClient.Verify(
-                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>(), It.IsAny<CancellationToken>()),
+                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>()),
                 Times.Exactly(1));
         }
 
@@ -305,7 +304,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
 
             // Assert
             _commonServiceClient.Verify(
-                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>(), It.IsAny<CancellationToken>()),
+                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>()),
                 Times.Exactly(6));
         }
 
@@ -320,7 +319,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
 
             // Assert
             _commonServiceClient.Verify(
-                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>(), It.IsAny<CancellationToken>()),
+                m => m.HandleTransactionsAsync(It.IsAny<IList<TransactionModel>>()),
                 Times.Exactly(1));
         }
     }

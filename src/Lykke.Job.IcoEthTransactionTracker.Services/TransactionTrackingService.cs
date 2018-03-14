@@ -87,7 +87,7 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
                     Amount = UnitConversion.Convert.FromWei(tx.Action.Value.Value), //  WEI to ETH
                     BlockId = tx.BlockHash,
                     CreatedUtc = blockInfo.Timestamp.UtcDateTime,
-                    Currency = CurrencyType.ETH,
+                    Currency = CurrencyType.Eth,
                     PayInAddress = _addressUtil.ConvertToChecksumAddress(tx.Action.To), // lower-case to checksum representation
                     TransactionId = tx.TransactionHash,
                     UniqueId = tx.TransactionHash
