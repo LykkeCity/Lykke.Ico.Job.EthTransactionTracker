@@ -40,25 +40,37 @@ namespace Lykke.Job.IcoEthTransactionTracker.Services
 
         public async Task Track()
         {
-            var lastConfirmedHeight = await _blockchainReader.GetLastConfirmedHeightAsync(_trackingSettings.ConfirmationLimit);
-            var lastProcessedHeight = await _settingsRepository.GetLastProcessedBlockHeightAsync();
-
-            if (lastProcessedHeight < _trackingSettings.StartHeight)
+            try
             {
-                lastProcessedHeight = _trackingSettings.StartHeight;
-            }
+                var lastConfirmedHeight = await _blockchainReader.GetLastConfirmedHeightAsync(_trackingSettings.ConfirmationLimit);
+                var lastProcessedHeight = await _settingsRepository.GetLastProcessedBlockHeightAsync();
+                if (lastProcessedHeight < _trackingSettings.StartHeight)
+                {
+                    lastProcessedHeight = _trackingSettings.StartHeight;
+                }
 
-            if (lastProcessedHeight >= lastConfirmedHeight)
+                if (lastProcessedHeight >= lastConfirmedHeight)
+                {
+                    await _log.WriteInfoAsync(nameof(Track),
+                        $"Network: {_network}, LastProcessedHeight: {lastProcessedHeight}, LastConfirmedHeight: {lastConfirmedHeight}",
+                        $"No new data");
+
+                    return;
+                }
+
+                await ProcessRange(lastProcessedHeight + 1, lastConfirmedHeight, saveProgress: true);
+            }
+            catch (Exception ex)
             {
-                // all processed or start height is greater than current height
-                await _log.WriteInfoAsync(nameof(Track),
-                    $"Network: {_network}, LastProcessedHeight: {lastProcessedHeight}, LastConfirmedHeight: {lastConfirmedHeight}",
-                    $"No new data");
-
-                return;
+                if (!_trackingSettings.UseTraceFilter && ex.ToString().Contains("502 (Bad Gateway)"))
+                {
+                    await _log.WriteInfoAsync(nameof(Track), ex.ToString(), "Infura error");
+                }
+                else
+                {
+                    throw ex;
+                }
             }
-
-            await ProcessRange(lastProcessedHeight + 1, lastConfirmedHeight, saveProgress: true);
         }
 
         public async Task<int> ProcessBlock(BlockInformation blockInfo)
