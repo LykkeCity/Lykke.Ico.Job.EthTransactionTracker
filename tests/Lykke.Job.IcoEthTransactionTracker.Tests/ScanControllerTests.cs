@@ -16,10 +16,10 @@ namespace Lykke.Job.IcoEthTransactionTracker.Tests
             var scanController = new ScanController(transactionServiceTests.Init(lastProcessed));
 
             // Act
-            await scanController.Range(new RangeRequest { FromHeight = 1, ToHeight = 2 });
+            await scanController.Range(1, 2);
 
             // Assert
-            Assert.Equal(lastProcessed.ToString(), transactionServiceTests.LastProcessed);
+            Assert.Equal(lastProcessed, transactionServiceTests.LastProcessed);
         }
     }
 }

@@ -13,6 +13,7 @@ using Lykke.Job.IcoEthTransactionTracker.Core.Settings;
 using Lykke.Job.IcoEthTransactionTracker.Models;
 using Lykke.Job.IcoEthTransactionTracker.Modules;
 using Lykke.Logs;
+using Lykke.Logs.Slack;
 using Lykke.SettingsReader;
 using Lykke.SlackNotification.AzureQueue;
 using Microsoft.AspNetCore.Builder;
@@ -64,7 +65,6 @@ namespace Lykke.Job.IcoEthTransactionTracker
 
                 builder.RegisterModule(new JobModule(appSettings.CurrentValue.IcoEthTransactionTrackerJob,
                     appSettings.Nested(x => x.IcoEthTransactionTrackerJob.Db),
-                    appSettings.Nested(x => x.IcoEthTransactionTrackerJob.AzureQueue),
                     Log));
 
                 builder.Populate(services);
@@ -205,7 +205,7 @@ namespace Lykke.Job.IcoEthTransactionTracker
                 aggregateLogger.AddLog(azureStorageLogger);
             }
 
-            aggregateLogger.AddIcoSlackLog(slackService);
+            aggregateLogger.AddLog(LykkeLogToSlack.Create(slackService, "Ico", LogLevel.Error | LogLevel.FatalError));
 
             return aggregateLogger;
         }

@@ -15,27 +15,47 @@ namespace Lykke.Job.IcoEthTransactionTracker.Controllers
             _transactionTrackingService = transactionTrackingService;
         }
 
-        [HttpPost()]
-        public async Task<IActionResult> Block([FromBody]BlockRequest block)
+        /// <summary>
+        /// Re-process block
+        /// </summary>
+        /// <param name="block">Block id (hash) or height</param>
+        /// <returns></returns>
+        [HttpPost]
+        public async Task<IActionResult> Block(string block)
         {
-            if (block.Height.HasValue)
+            block = block.Trim();
+
+            if (ulong.TryParse(block, out var height))
             {
-                return Json(new ScanResponse(await _transactionTrackingService.ProcessBlockByHeight(block.Height.Value)));
-            }
-            else if (!string.IsNullOrWhiteSpace(block.Id))
-            {
-                return Json(new ScanResponse(await _transactionTrackingService.ProcessBlockById(block.Id)));
+                return Json(new ScanResponse(await _transactionTrackingService.ProcessBlockByHeight(height)));
             }
             else
             {
-                return BadRequest();
+                return Json(new ScanResponse(await _transactionTrackingService.ProcessBlockById(block)));
             }
         }
 
+        /// <summary>
+        /// Re-process range of blocks by height
+        /// </summary>
+        /// <param name="from">From height</param>
+        /// <param name="to">To height</param>
+        /// <returns></returns>
         [HttpPost]
-        public async Task<IActionResult> Range([FromBody]RangeRequest range)
+        public async Task<IActionResult> Range(ulong from, ulong to)
         {
-            return Json(new ScanResponse(await _transactionTrackingService.ProcessRange(range.FromHeight, range.ToHeight, saveProgress: false)));
+            return Json(new ScanResponse(await _transactionTrackingService.ProcessRange(from, to, saveProgress: false)));
+        }
+
+        /// <summary>
+        /// Overwrites last processed block heigth
+        /// </summary>
+        /// <param name="height"></param>
+        /// <returns></returns>
+        [HttpPost]
+        public async Task Reset(ulong height)
+        {
+            await _transactionTrackingService.ResetProcessedBlockHeight(height);
         }
     }
 }
